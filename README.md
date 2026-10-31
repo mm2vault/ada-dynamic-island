@@ -25,8 +25,11 @@ kapsül olarak çalışır (Instagram'da, Chrome'da, oyun oynarken de görünür
 5. **Başlat** düğmesine bas. Ekranın üstünde `ada` kapsülü belirir.
 
 > Ada'nın çalışması için bu izinler gerçekten gerekli: overlay (üstte çizim), bildirim
-> erişimi (medya oturumu), kullanım erişimi (aktif uygulama). Uygulama bildirimlerini
-> okumaz, hiçbir veriyi sunucuya göndermez.
+> erişimi (medya oturumu), kullanım erişimi (aktif uygulama). Bildirim dinleyicisi genel
+> bildirim içeriğini okumaz; müzik kontrolü için Android'in aktif medya oturumlarına
+> erişim sağlar. AI açık ve API anahtarı tanımlıysa sohbet mesajları ile aktif uygulama,
+> süre, saat, pil ve müzik bağlamı seçtiğin sağlayıcıya gönderilir. AI kullanılmıyorsa
+> yerleşik kural tabanlı öneriler cihazda üretilir.
 
 ## 2. Yapay zekâyı bağlama
 
