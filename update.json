@@ -1,8 +1,8 @@
 {
   "packageName": "com.ada.island",
-  "versionCode": 9,
-  "versionName": "1.8",
-  "apkUrl": "https://github.com/mm2vault/ada-dynamic-island/releases/download/v1.8/Ada-1.8.apk",
-  "sha256": "5c829ee7fe434e5aba3f284472021d16ef962172f921b3b96095f11cc64f19d6",
-  "notes": "Gemini 3.8 Flash provider, custom island animations, and the secure Android-confirmed updater."
+  "versionCode": 10,
+  "versionName": "1.9",
+  "apkUrl": "https://github.com/mm2vault/ada-dynamic-island/releases/download/v1.9/Ada-1.9.apk",
+  "sha256": "82a0a58dbd51c78627b6df3cb17e3ff91d7c984cdec10ceb3686b70ac313b4ad",
+  "notes": "Gemini answers now stream into Ada as generated; chat requests are no longer queued behind suggestion requests."
 }

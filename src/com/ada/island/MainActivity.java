@@ -386,7 +386,7 @@ public class MainActivity extends Activity {
         });
         findCard.addView(localPick);
 
-        TextView footer = Ui.tv(this, "ada 1.8 · Gemini 3.8 Flash + animasyonlar + güncelleme\nAndroid sistem seçicisi yalnızca seçtiğin dosyalara erişim verir.",
+        TextView footer = Ui.tv(this, "ada 1.9 · Gemini 3.8 Flash + akışlı yanıt + güncelleme\nAndroid sistem seçicisi yalnızca seçtiğin dosyalara erişim verir.",
                 10.5f, 0xFF6E6E7C, false);
         LinearLayout.LayoutParams fLp = new LinearLayout.LayoutParams(MATCH, WRAP);
         fLp.topMargin = Ui.dp(this, 30);

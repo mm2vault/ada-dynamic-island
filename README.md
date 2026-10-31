@@ -12,7 +12,7 @@ kapsül olarak çalışır (Instagram'da, Chrome'da, oyun oynarken de görünür
 
 ## 1. Kurulum (2 dakika)
 
-1. `Ada-1.8.apk` dosyasını telefona indir.
+1. `Ada-1.9.apk` dosyasını telefona indir.
 2. Dosyaya dokun. Android "bilinmeyen kaynaklara izin ver" derse, izin ver
    (Ayarlar → Uygulamalar → Özel erişim → Bilinmeyen uygulamalar → dosya yöneticisi / tarayıcı).
 3. Kur → **Aç**.
@@ -38,6 +38,8 @@ Ada'nın soruları ve cevapları iki modda çalışır:
 - **Anahtarsız (yerleşik) mod:** kurallara dayalı, bağlama duyarlı Türkçe sorular üretir
   ("Instagram'da 24 dakikadır geziyorsun…", "Batarya %18…"). Hiçbir ayar gerekmez.
 - **AI modu:** ana ekranda sağlayıcı olarak **Google Gemini API** seç veya **Gemini 3.8 Flash ayarlarını uygula** düğmesine dokun. Google AI Studio'dan aldığın kendi API anahtarını gir; model `gemini-3.8-flash` olarak ayarlanır.
+- Gemini yanıtları SSE akışıyla parça parça gösterilir; yanıtın tamamlanmasını beklemeden yazı görünmeye başlar. Sohbet, arka plandaki soru-öneri isteğini beklemez. Gerçek süre internet ve API yanıtına bağlıdır.
+- API anahtarı yoksa sohbet Gemini yanıtı üretemez; kapsüldeki öneriler cihazda çalışan basit kurallara döner.
 - Diğer sağlayıcılar için **OpenAI uyumlu servis** seçeneğini kullan:
 
 | Servis | Sunucu adresi | Model örneği |
@@ -76,7 +78,7 @@ yalnızca seçtiğin adrese gider.
 | `MusicBridge` + `MusicNotificationListener` | `MediaSessionManager.getActiveSessions()` ile aktif çaları okur, `TransportControls` ile kontrol eder |
 | `ContextReader` | `UsageStatsManager.queryEvents()` ile son ön plana gelen uygulama + süre, batarya, saat |
 | `SuggestionEngine` | API anahtarı yokken çalışan kural tabanlı Türkçe soru üreteci |
-| `AiClient` | Google Gemini `models.generateContent` ve OpenAI uyumlu `/chat/completions`, saf `HttpURLConnection` |
+| `AiClient` | Google Gemini `streamGenerateContent` (SSE, parça parça yanıt) ve OpenAI uyumlu `/chat/completions`, saf `HttpURLConnection` |
 | `UpdateManager` | HTTPS sürüm akışını denetler, SHA-256 doğrular ve Android PackageInstaller'a devreder |
 | `LocalPlayer` | `assets/*.mp3` için Ada Radyo ve Android dosya seçicisinden kullanıcının seçtiği sesler için `MediaPlayer` kuyruğu |
 | `MainActivity` / `ChatActivity` | izin merkezi, ayarlar, tam ekran sohbet |

@@ -803,6 +803,11 @@ public class IslandService extends Service {
 
         AiClient.chat(this, history, new AiClient.Cb() {
             @Override
+            public void onPartial(String text) {
+                if (exAnswer != null) exAnswer.setText(text);
+            }
+
+            @Override
             public void onOk(String text) {
                 asking = false;
                 exAnswer.setText(text);

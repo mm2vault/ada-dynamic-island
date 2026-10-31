@@ -36,6 +36,8 @@ public class AiClient {
         void onOk(String text);
 
         void onErr(String message);
+
+        default void onPartial(String text) {}
     }
 
     public static final String SYSTEM_PROMPT =
@@ -44,7 +46,7 @@ public class AiClient {
                     + "Türkçe, kısa (en fazla 2-3 cümle), samimi ve zeki konuş. Gereksiz liste ve başlık kullanma. "
                     + "Kullanıcıya gerçekten faydalı, bağlama uygun tek bir somut öneri veya soru sor. Asla 'yapay zeka olarak' gibi kalıplar kullanma.";
 
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2);
     private static final Handler UI = new Handler(Looper.getMainLooper());
 
     public static void chat(final Context ctx, final List<Msg> history, final Cb cb) {
@@ -62,7 +64,7 @@ public class AiClient {
             @Override
             public void run() {
                 try {
-                    String text = request(prefs, history, 400);
+                    String text = request(prefs, history, 160, cb);
                     final String out = text;
                     UI.post(new Runnable() {
                         @Override
@@ -104,8 +106,8 @@ public class AiClient {
         return out;
     }
 
-    private static String request(Prefs prefs, List<Msg> history, int maxTokens) throws Exception {
-        if (prefs.isGemini()) return requestGemini(prefs, history, maxTokens);
+    private static String request(Prefs prefs, List<Msg> history, int maxTokens, Cb cb) throws Exception {
+        if (prefs.isGemini()) return requestGeminiStream(prefs, history, maxTokens, cb);
         JSONArray arr = new JSONArray();
         for (Msg m : history) {
             JSONObject o = new JSONObject();
@@ -156,7 +158,7 @@ public class AiClient {
         return content;
     }
 
-    private static String requestGemini(Prefs prefs, List<Msg> history, int maxTokens) throws Exception {
+    private static String requestGeminiStream(Prefs prefs, List<Msg> history, int maxTokens, final Cb cb) throws Exception {
         JSONArray contents = new JSONArray();
         StringBuilder systemText = new StringBuilder();
         for (Msg m : history) {
@@ -187,65 +189,91 @@ public class AiClient {
             body.put("systemInstruction", sys);
         }
         JSONObject generation = new JSONObject();
-        generation.put("temperature", 0.75);
+        generation.put("temperature", 0.65);
         generation.put("maxOutputTokens", maxTokens);
         body.put("generationConfig", generation);
         body.put("store", false);
 
         String model = prefs.model().trim();
         if (model.startsWith("models/")) model = model.substring("models/".length());
-        URL url = new URL(prefs.baseUrl() + "/models/" + model + ":generateContent");
+        URL url = new URL(prefs.baseUrl() + "/models/" + model + ":streamGenerateContent?alt=sse");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setConnectTimeout(20000);
-        conn.setReadTimeout(60000);
-        conn.setDoOutput(true);
-        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-        conn.setRequestProperty("x-goog-api-key", prefs.apiKey());
+        try {
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(30000);
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            conn.setRequestProperty("Accept", "text/event-stream");
+            conn.setRequestProperty("x-goog-api-key", prefs.apiKey());
 
-        byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
-        OutputStream os = conn.getOutputStream();
-        os.write(payload);
-        os.flush();
-        os.close();
+            byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(payload);
+                os.flush();
+            }
 
-        int code = conn.getResponseCode();
-        InputStream is = code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream();
-        StringBuilder response = new StringBuilder();
-        if (is != null) {
-            BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-            String line;
-            while ((line = br.readLine()) != null) response.append(line).append('\n');
-            br.close();
+            int code = conn.getResponseCode();
+            if (code < 200 || code >= 300) {
+                String raw = readBody(conn.getErrorStream());
+                String snippet = raw.length() > 220 ? raw.substring(0, 220) : raw;
+                throw new IllegalStateException("HTTP " + code + " " + snippet);
+            }
+
+            StringBuilder answer = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("data:")) continue;
+                    String event = line.substring(5).trim();
+                    if (event.isEmpty() || "[DONE]".equals(event)) continue;
+                    String chunk = geminiChunkText(event);
+                    if (chunk.isEmpty()) continue;
+                    answer.append(chunk);
+                    final String partial = answer.toString();
+                    UI.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            cb.onPartial(partial);
+                        }
+                    });
+                }
+            }
+            String text = answer.toString().trim();
+            if (text.isEmpty()) throw new IllegalStateException("Gemini boş yanıt döndürdü.");
+            return text;
+        } finally {
+            conn.disconnect();
         }
-        String raw = response.toString();
-        if (code < 200 || code >= 300) {
-            String snippet = raw.length() > 220 ? raw.substring(0, 220) : raw;
-            throw new IllegalStateException("HTTP " + code + " " + snippet);
-        }
+    }
+
+    private static String geminiChunkText(String raw) throws Exception {
         JSONObject result = new JSONObject(raw);
         JSONArray candidates = result.optJSONArray("candidates");
         if (candidates == null || candidates.length() == 0) {
             JSONObject feedback = result.optJSONObject("promptFeedback");
             String reason = feedback == null ? "" : feedback.optString("blockReason", "");
-            throw new IllegalStateException(reason.isEmpty() ? "Gemini boş yanıt döndürdü." : "Gemini yanıtı engelledi: " + reason);
+            if (!reason.isEmpty()) throw new IllegalStateException("Gemini yanıtı engelledi: " + reason);
+            return "";
         }
         JSONObject candidate = candidates.getJSONObject(0);
         JSONObject content = candidate.optJSONObject("content");
         JSONArray parts = content == null ? null : content.optJSONArray("parts");
-        StringBuilder answer = new StringBuilder();
+        StringBuilder text = new StringBuilder();
         if (parts != null) {
-            for (int i = 0; i < parts.length(); i++) {
-                String text = parts.getJSONObject(i).optString("text", "");
-                if (!text.isEmpty()) {
-                    if (answer.length() > 0) answer.append('\n');
-                    answer.append(text);
-                }
-            }
+            for (int i = 0; i < parts.length(); i++) text.append(parts.getJSONObject(i).optString("text", ""));
         }
-        String text = answer.toString().trim();
-        if (text.isEmpty()) throw new IllegalStateException("Gemini boş yanıt döndürdü.");
-        return text;
+        return text.toString();
+    }
+
+    private static String readBody(InputStream input) throws Exception {
+        if (input == null) return "";
+        StringBuilder text = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) text.append(line).append('\n');
+        }
+        return text.toString();
     }
 
     private static String friendly(Exception e) {

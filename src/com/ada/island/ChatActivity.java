@@ -181,6 +181,17 @@ public class ChatActivity extends Activity {
 
         AiClient.chat(this, payload, new AiClient.Cb() {
             @Override
+            public void onPartial(String text) {
+                typing.setText(text);
+                scroll.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        scroll.fullScroll(View.FOCUS_DOWN);
+                    }
+                });
+            }
+
+            @Override
             public void onOk(String reply) {
                 typing.setText(reply);
                 history.add(new AiClient.Msg("assistant", reply));
