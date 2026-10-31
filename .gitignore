@@ -1,0 +1,14 @@
+# Private Android release signing material
+*.keystore
+*.jks
+
+# Build outputs and downloaded tool cache
+/build/
+/tools/r8.jar
+*.apk
+
+# Local machine / IDE files
+local.properties
+.gradle/
+.idea/
+.DS_Store
