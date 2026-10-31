@@ -147,7 +147,7 @@ public class AiClient {
         }
         String raw = sb.toString();
         if (code < 200 || code >= 300) {
-            String snippet = raw.length() > 220 ? raw.substring(0, 220) : raw;
+            String snippet = raw.length() > 800 ? raw.substring(0, 800) : raw;
             throw new IllegalStateException("HTTP " + code + " " + snippet);
         }
         JSONObject res = new JSONObject(raw);
@@ -216,7 +216,7 @@ public class AiClient {
             int code = conn.getResponseCode();
             if (code < 200 || code >= 300) {
                 String raw = readBody(conn.getErrorStream());
-                String snippet = raw.length() > 220 ? raw.substring(0, 220) : raw;
+                String snippet = raw.length() > 800 ? raw.substring(0, 800) : raw;
                 throw new IllegalStateException("HTTP " + code + " " + snippet);
             }
 
@@ -278,6 +278,24 @@ public class AiClient {
 
     private static String friendly(Exception e) {
         String m = e.getMessage() == null ? e.toString() : e.getMessage();
+        int http = m.indexOf("HTTP ");
+        if (http >= 0) {
+            int codeStart = http + 5;
+            int codeEnd = m.indexOf(' ', codeStart);
+            if (codeEnd > codeStart) {
+                String code = m.substring(codeStart, codeEnd);
+                String raw = m.substring(codeEnd + 1).trim();
+                try {
+                    JSONObject error = new JSONObject(raw).optJSONObject("error");
+                    String detail = error == null ? "" : error.optString("message", "").trim();
+                    if (!detail.isEmpty()) {
+                        if (detail.length() > 150) detail = detail.substring(0, 150);
+                        return "API " + code + ": " + detail;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
         if (m.contains("HTTP 401")) return "Anahtar reddedildi (401). Anahtarı ve sağlayıcıyı kontrol et.";
         if (m.contains("HTTP 403")) return "Erişim yok (403). Model veya bölge kısıtlı olabilir.";
         if (m.contains("HTTP 404")) return "Model ya da adres bulunamadı (404). Model adını kontrol et.";

@@ -12,7 +12,7 @@ kapsül olarak çalışır (Instagram'da, Chrome'da, oyun oynarken de görünür
 
 ## 1. Kurulum (2 dakika)
 
-1. `Ada-1.10.apk` dosyasını telefona indir.
+1. `Ada-1.11.apk` dosyasını telefona indir.
 2. Dosyaya dokun. Android "bilinmeyen kaynaklara izin ver" derse, izin ver
    (Ayarlar → Uygulamalar → Özel erişim → Bilinmeyen uygulamalar → dosya yöneticisi / tarayıcı).
 3. Kur → **Aç**.
@@ -40,6 +40,7 @@ Ada'nın soruları ve cevapları iki modda çalışır:
 - **AI modu:** ana ekranda sağlayıcı olarak **Google Gemini API** seç veya **Gemini 3.8 Flash ayarlarını uygula** düğmesine dokun. Google AI Studio'dan aldığın kendi API anahtarını gir; model `gemini-3.8-flash` olarak ayarlanır.
 - Gemini yanıtları SSE akışıyla parça parça gösterilir; yanıtın tamamlanmasını beklemeden yazı görünmeye başlar. Sohbet, arka plandaki soru-öneri isteğini beklemez. Gerçek süre internet ve API yanıtına bağlıdır.
 - API anahtarı yoksa sohbet Gemini yanıtı üretemez; kapsüldeki öneriler cihazda çalışan basit kurallara döner.
+- **Kaydet ve test et** hata verirse, sağlayıcının okunabilir hata açıklaması ekranda gösterilir. `gemini-3.8-flash` geçerli kararlı model kimliğidir; sorun sürerse anahtar, Google AI Studio projesi, API erişimi veya kota durumunu bu hata metnine göre kontrol et. Anahtarın kendisini kimseyle paylaşma.
 - Diğer sağlayıcılar için **OpenAI uyumlu servis** seçeneğini kullan:
 
 | Servis | Sunucu adresi | Model örneği |
@@ -64,12 +65,12 @@ YouTube araması Gemini anahtarından ayrıdır ve **YouTube Data API v3 anahtar
 - **Sürükle:** kapsülü istediğin yüksekliğe taşı (konum hatırlanır).
 - **‹‹ / ▮▮ / ››** : o an çalan uygulamanın müziğini kontrol eder (Spotify, YouTube Music…).
   Hiçbir şey çalmıyorsa Ada Radyo devreye girer.
-- **Spotify / YouTube Music ara:** Spotify araması resmî uygulamaya aktarılır. YouTube Data API anahtarı girilmişse Ada sonuçları listeler ve seçtiğin videoyu YouTube Music'e açar; anahtar yoksa arama doğrudan resmî uygulamada yapılır. Ada YouTube akış URL'si çıkarmaz veya YouTube'u kendi içinde oynatmaz; çalan müziği Android medya oturumu üzerinden gösterip kontrol eder.
+- **Spotify / YouTube ara:** Spotify araması resmî uygulamaya aktarılır. YouTube Data API anahtarı girilmişse Ada sonuçları listeler; seçtiğin video Ada'nın içindeki resmî YouTube IFrame oynatıcısında görünür kontrollerle açılır. Oynatma yalnızca Ada ekrandayken sürer; arka planda dinlemek için YouTube Music/YouTube uygulamasına geçebilirsin. Anahtar yoksa arama doğrudan resmî uygulamada yapılır.
 - **Telefondan ses dosyası seç:** Android dosya seçicisinde bir veya daha fazla ses dosyası seç; Ada seçilen parçaları sırayla çalar. Tüm depolamaya erişim izni istemez.
 - **Radyo:** uygulamayla gelen üç ortam parçası (Gece Yolculuğu, Derin Odak, Yağmurlu Pencere).
 - **Sor:** sıradaki öneriyi sorar. **Klavye:** tam ekran sohbeti açar.
 - **Kendiliğinden sorular:** ayarlardan 15/30/60 dakikada bir açılır (kilit ekranındayken susar).
-- **Güncellemeler:** ana ekran açıldığında 24 saatte bir GitHub sürüm akışını denetler; **Şimdi güncelleme ara** ile elle de denetlenebilir. Yeni sürüm varsa indirip kurmayı sen başlatırsın. İndirilen APK'nın SHA-256 değeri doğrulanır.
+- **Güncellemeler:** ana ekran açıldığında 24 saatte bir GitHub sürüm akışını denetler; **Şimdi güncelleme ara** ile elle de denetlenebilir. Geçici ağ hatası kontrol zamanlayıcısını başlatmaz. Yeni sürüm varsa indirip kurmayı sen başlatırsın. İndirilen APK'nın SHA-256 değeri doğrulanır ve Android kurulum onayı gerekir.
 - Kapatmak için bildirimdeki **Gizle** veya ana ekrandaki **Başlat/Durdur**.
 
 ## 4. Nasıl çalışıyor (teknik)
@@ -81,7 +82,8 @@ YouTube araması Gemini anahtarından ayrıdır ve **YouTube Data API v3 anahtar
 | `ContextReader` | `UsageStatsManager.queryEvents()` ile son ön plana gelen uygulama + süre, batarya, saat |
 | `SuggestionEngine` | API anahtarı yokken çalışan kural tabanlı Türkçe soru üreteci |
 | `AiClient` | Google Gemini `streamGenerateContent` (SSE, parça parça yanıt) ve OpenAI uyumlu `/chat/completions`, saf `HttpURLConnection` |
-| `YouTubeSearchClient` | Resmî YouTube Data API v3 ile başlık/kanal arar; oynatmayı resmî uygulamaya devreder |
+| `YouTubeSearchClient` | Resmî YouTube Data API v3 ile başlık/kanal arar |
+| `YouTubePlayerActivity` | YouTube'un görünür IFrame oynatıcısını Ada içinde açar; ekran arka plana geçince durdurur |
 | `UpdateManager` | HTTPS sürüm akışını denetler, SHA-256 doğrular ve Android PackageInstaller'a devreder |
 | `LocalPlayer` | `assets/*.mp3` için Ada Radyo ve Android dosya seçicisinden kullanıcının seçtiği sesler için `MediaPlayer` kuyruğu |
 | `MainActivity` / `ChatActivity` | izin merkezi, ayarlar, tam ekran sohbet |
@@ -123,8 +125,8 @@ mockup/preview.html       tasarım önizlemesi
   "arka planda çalışma" izinlerini de açmak gerekebilir.
 - Bildirim erişimi verilmezse ada müziği **göremez** (kendi radyosunu yine çalar).
 - Kullanım erişimi verilmezse "hangi uygulamadasın" bilgisi "Ana ekran" kalır.
-- Spotify/YouTube içeriklerini Ada içinden indirmez veya akış korumalarını aşmaz. YouTube geliştirici kuralları arka plan oynatma ve ses ayırma/indirmeyi yasaklar; yerel olarak seçtiğin ses dosyaları çalınır.
+- Spotify/YouTube içeriklerini Ada içinden indirmez veya akış korumalarını aşmaz. YouTube videosu yalnızca görünür resmî oynatıcıda gösterilir; Ada arka plana geçince oynatma durur. Arka plan çalma için YouTube uygulamasına geçilir; yerel olarak seçtiğin ses dosyaları Ada'da çalınır.
 - Güncelleme için Android'de Ada'ya **bu kaynaktan uygulama yükleme** özel erişimi vermen gerekebilir. Bu erişim yalnızca güncelleme akışında istenir. APK yüklemesini Android tamamlar ve sistem onayı gösterir; sessiz kurulum veya sistem güvenliğini atlama yoktur.
 - Güncelleme akışı HTTPS üzerinden sürüm bilgisini okur; indirmeden sonra SHA-256, uygulama kimliği ve sürüm numarası doğrulanır. Android yükleme kaynağı izni isteyebilir ve her kurulumda kendi onay ekranını gösterir; sessiz kurulum yapılmaz.
 - Herkese açık kaynak deposundaki derleme betiği kendi yerel imza anahtarını oluşturur. Bu şekilde derlenen APK, önceden yüklenmiş resmi sürümlerin yerine güncellenemez; resmi sürümler aynı özel imza anahtarıyla yayımlanır ve anahtar depoda paylaşılmaz.
-- Ada, YouTube için yalnızca resmî arama metaverisini alır ve seçilen videoyu resmî uygulamaya devreder; kendi içinde YouTube müziği akışı sunmaz. AI yanıtı istenirse yalnızca yapılandırdığın uç noktaya istek gönderir.
+- Ada, YouTube aramasında yalnızca resmî arama metaverisini alır ve videoyu YouTube'un resmî IFrame oynatıcısıyla görünür biçimde gösterir. AI yanıtı istenirse yalnızca yapılandırdığın uç noktaya istek gönderir.

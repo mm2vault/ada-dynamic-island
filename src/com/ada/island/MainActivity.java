@@ -338,7 +338,7 @@ public class MainActivity extends Activity {
         root.addView(findCard, findLp);
 
         TextView findHint = Ui.tv(this,
-                "YouTube anahtarıyla sonuçları listele ve seçtiğini YouTube Music'te aç; anahtarsız arama da çalışır. Yerel sesleri Ada'da çal.",
+                "YouTube anahtarıyla ara ve seçtiğini Ada içindeki görünür oynatıcıda aç. Anahtarsız arama resmî uygulamada yapılır.",
                 11.5f, Ui.MUTED, false);
         findCard.addView(findHint);
 
@@ -376,7 +376,7 @@ public class MainActivity extends Activity {
         });
         providerRow.addView(spotify, Ui.lpw(0, WRAP, 1f));
 
-        TextView youtube = actionButton("YouTube Music'te ara", false);
+        TextView youtube = actionButton("YouTube'da ara", false);
         LinearLayout.LayoutParams youtubeLp = new LinearLayout.LayoutParams(0, WRAP, 1f);
         youtubeLp.leftMargin = Ui.dp(this, 8);
         youtube.setLayoutParams(youtubeLp);
@@ -401,7 +401,7 @@ public class MainActivity extends Activity {
         });
         findCard.addView(localPick);
 
-        TextView footer = Ui.tv(this, "ada 1.10 · Gemini 3.8 Flash + YouTube arama API'si + güncelleme\nAndroid sistem seçicisi yalnızca seçtiğin dosyalara erişim verir.",
+        TextView footer = Ui.tv(this, "ada 1.11 · Gemini 3.8 Flash + YouTube arama/oynatıcı + güncelleme\nAndroid sistem seçicisi yalnızca seçtiğin dosyalara erişim verir.",
                 10.5f, 0xFF6E6E7C, false);
         LinearLayout.LayoutParams fLp = new LinearLayout.LayoutParams(MATCH, WRAP);
         fLp.topMargin = Ui.dp(this, 30);
@@ -470,7 +470,7 @@ public class MainActivity extends Activity {
             @Override
             public void onResults(final java.util.List<YouTubeSearchClient.Track> tracks) {
                 button.setEnabled(true);
-                button.setText("YouTube Music'te ara");
+                button.setText("YouTube'da ara");
                 if (tracks.isEmpty()) {
                     Toast.makeText(MainActivity.this, "Sonuç bulunamadı.", Toast.LENGTH_SHORT).show();
                     return;
@@ -482,7 +482,8 @@ public class MainActivity extends Activity {
                         .setItems(labels, new android.content.DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(android.content.DialogInterface dialog, int which) {
-                                openYouTubeVideo(tracks.get(which).videoId);
+                                YouTubeSearchClient.Track track = tracks.get(which);
+                                openYouTubeVideo(track.videoId, track.title);
                             }
                         })
                         .setNegativeButton("Kapat", null)
@@ -492,29 +493,17 @@ public class MainActivity extends Activity {
             @Override
             public void onError(String message) {
                 button.setEnabled(true);
-                button.setText("YouTube Music'te ara");
+                button.setText("YouTube'da ara");
                 Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
     }
 
-    private void openYouTubeVideo(String videoId) {
-        String url = "https://music.youtube.com/watch?v=" + Uri.encode(videoId);
-        String[] packages = new String[]{"com.google.android.apps.youtube.music", "com.google.android.youtube"};
-        for (String packageName : packages) {
-            try {
-                Intent appIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                appIntent.setPackage(packageName);
-                startActivity(appIntent);
-                return;
-            } catch (Exception ignored) {
-            }
-        }
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-        } catch (Exception e) {
-            Toast.makeText(this, "YouTube açılamadı.", Toast.LENGTH_LONG).show();
-        }
+    private void openYouTubeVideo(String videoId, String title) {
+        Intent player = new Intent(this, YouTubePlayerActivity.class);
+        player.putExtra(YouTubePlayerActivity.EXTRA_VIDEO_ID, videoId);
+        player.putExtra(YouTubePlayerActivity.EXTRA_TITLE, title);
+        startActivity(player);
     }
 
     private void chooseLocalAudio() {
@@ -763,7 +752,6 @@ public class MainActivity extends Activity {
     private void maybeAutoCheckUpdates() {
         long now = System.currentTimeMillis();
         if (now - prefs.lastUpdateCheck() < 24L * 60L * 60L * 1000L) return;
-        prefs.setLastUpdateCheck(now);
         checkForUpdates(false);
     }
 
@@ -774,10 +762,12 @@ public class MainActivity extends Activity {
             public void onResult(UpdateManager.UpdateInfo update, String error) {
                 if (isFinishing()) return;
                 if (error != null) {
+                    prefs.setLastUpdateCheck(0L);
                     if (updateStatus != null) updateStatus.setText("Güncelleme denetlenemedi.");
                     if (manual) Toast.makeText(MainActivity.this, error, Toast.LENGTH_LONG).show();
                     return;
                 }
+                prefs.setLastUpdateCheck(System.currentTimeMillis());
                 if (update == null) {
                     if (updateStatus != null) updateStatus.setText("Ada güncel.");
                     if (manual) Toast.makeText(MainActivity.this, "Ada'nın en son sürümündesin.", Toast.LENGTH_SHORT).show();

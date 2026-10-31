@@ -1,8 +1,8 @@
 {
   "packageName": "com.ada.island",
-  "versionCode": 11,
-  "versionName": "1.10",
-  "apkUrl": "https://github.com/mm2vault/ada-dynamic-island/releases/download/v1.10/Ada-1.10.apk",
-  "sha256": "cb0239654ed2ec7c8834de61235063b4b643c86b552068b8587508cb67a515e8",
-  "notes": "Official YouTube Data API v3 search results with handoff to the YouTube Music app; no direct stream extraction or in-app background playback."
+  "versionCode": 12,
+  "versionName": "1.11",
+  "apkUrl": "https://github.com/mm2vault/ada-dynamic-island/releases/download/v1.11/Ada-1.11.apk",
+  "sha256": "198d3e7b40d49035469c25e4d7a26c43c7dfe274496b02b45b208daee3931135",
+  "notes": "Selected YouTube search results open in Ada's visible official IFrame player, which pauses when Ada is backgrounded. Failed update checks retry on a later launch. AI API errors now include a short provider explanation."
 }
