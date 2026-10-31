@@ -19,6 +19,14 @@ public class Prefs {
         sp.edit().putString("api_key", v == null ? "" : v.trim()).apply();
     }
 
+    public String youtubeDataApiKey() {
+        return sp.getString("youtube_data_api_key", "");
+    }
+
+    public void setYoutubeDataApiKey(String v) {
+        sp.edit().putString("youtube_data_api_key", v == null ? "" : v.trim()).apply();
+    }
+
     public String provider() {
         return sp.getString("ai_provider", "openai");
     }

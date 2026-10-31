@@ -23,7 +23,7 @@ aapt package -f -m \
   -I "$PLATFORM" \
   -F build/app.unsigned.apk \
   --min-sdk-version 26 --target-sdk-version 32 \
-  --version-code 10 --version-name 1.9
+  --version-code 11 --version-name 1.10
 
 echo "[2/5] javac"
 find src build/gen -name "*.java" > build/sources.txt

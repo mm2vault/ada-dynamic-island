@@ -43,6 +43,7 @@ public class MainActivity extends Activity {
     private EditText modelInput;
     private EditText urlInput;
     private EditText musicSearch;
+    private EditText youtubeApiKeyInput;
     private Spinner providerSpinner;
     private TextView toggleBtn;
     private boolean installingUpdate;
@@ -337,7 +338,7 @@ public class MainActivity extends Activity {
         root.addView(findCard, findLp);
 
         TextView findHint = Ui.tv(this,
-                "Spotify veya YouTube Music'te ara; çalmayı resmî uygulamada başlat. Telefonundaki ses dosyasını Ada'da aç.",
+                "YouTube anahtarıyla sonuçları listele ve seçtiğini YouTube Music'te aç; anahtarsız arama da çalışır. Yerel sesleri Ada'da çal.",
                 11.5f, Ui.MUTED, false);
         findCard.addView(findHint);
 
@@ -346,6 +347,20 @@ public class MainActivity extends Activity {
         searchLp.topMargin = Ui.dp(this, 9);
         musicSearch.setLayoutParams(searchLp);
         findCard.addView(musicSearch);
+
+        TextView apiHint = Ui.tv(this,
+                "İsteğe bağlı YouTube Data API v3 anahtarı. Anahtar yoksa arama resmî uygulamaya aktarılır.",
+                10.5f, Ui.MUTED, false);
+        LinearLayout.LayoutParams apiHintLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        apiHintLp.topMargin = Ui.dp(this, 8);
+        apiHint.setLayoutParams(apiHintLp);
+        findCard.addView(apiHint);
+
+        youtubeApiKeyInput = field("YouTube Data API v3 anahtarı", true);
+        LinearLayout.LayoutParams apiKeyLp = new LinearLayout.LayoutParams(MATCH, WRAP);
+        apiKeyLp.topMargin = Ui.dp(this, 5);
+        youtubeApiKeyInput.setLayoutParams(apiKeyLp);
+        findCard.addView(youtubeApiKeyInput);
 
         LinearLayout providerRow = Ui.row(this);
         LinearLayout.LayoutParams providerLp = new LinearLayout.LayoutParams(MATCH, WRAP);
@@ -368,7 +383,7 @@ public class MainActivity extends Activity {
         youtube.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openMusicSearch("youtube");
+                searchYoutube((TextView) v);
             }
         });
         providerRow.addView(youtube);
@@ -386,7 +401,7 @@ public class MainActivity extends Activity {
         });
         findCard.addView(localPick);
 
-        TextView footer = Ui.tv(this, "ada 1.9 · Gemini 3.8 Flash + akışlı yanıt + güncelleme\nAndroid sistem seçicisi yalnızca seçtiğin dosyalara erişim verir.",
+        TextView footer = Ui.tv(this, "ada 1.10 · Gemini 3.8 Flash + YouTube arama API'si + güncelleme\nAndroid sistem seçicisi yalnızca seçtiğin dosyalara erişim verir.",
                 10.5f, 0xFF6E6E7C, false);
         LinearLayout.LayoutParams fLp = new LinearLayout.LayoutParams(MATCH, WRAP);
         fLp.topMargin = Ui.dp(this, 30);
@@ -431,6 +446,74 @@ public class MainActivity extends Activity {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (Exception e) {
             Toast.makeText(this, "Bu müzik uygulaması açılamadı.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void searchYoutube(final TextView button) {
+        String query = musicSearch == null ? "" : musicSearch.getText().toString().trim();
+        if (query.isEmpty()) {
+            Toast.makeText(this, "Önce şarkı veya sanatçı yaz.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String apiKey = youtubeApiKeyInput == null
+                ? prefs.youtubeDataApiKey() : youtubeApiKeyInput.getText().toString().trim();
+        if (apiKey.isEmpty()) {
+            prefs.setYoutubeDataApiKey("");
+            openMusicSearch("youtube");
+            return;
+        }
+
+        prefs.setYoutubeDataApiKey(apiKey);
+        button.setEnabled(false);
+        button.setText("YouTube'da aranıyor…");
+        YouTubeSearchClient.search(apiKey, query, new YouTubeSearchClient.Callback() {
+            @Override
+            public void onResults(final java.util.List<YouTubeSearchClient.Track> tracks) {
+                button.setEnabled(true);
+                button.setText("YouTube Music'te ara");
+                if (tracks.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "Sonuç bulunamadı.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                String[] labels = new String[tracks.size()];
+                for (int i = 0; i < tracks.size(); i++) labels[i] = tracks.get(i).label();
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("YouTube sonuçları")
+                        .setItems(labels, new android.content.DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(android.content.DialogInterface dialog, int which) {
+                                openYouTubeVideo(tracks.get(which).videoId);
+                            }
+                        })
+                        .setNegativeButton("Kapat", null)
+                        .show();
+            }
+
+            @Override
+            public void onError(String message) {
+                button.setEnabled(true);
+                button.setText("YouTube Music'te ara");
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void openYouTubeVideo(String videoId) {
+        String url = "https://music.youtube.com/watch?v=" + Uri.encode(videoId);
+        String[] packages = new String[]{"com.google.android.apps.youtube.music", "com.google.android.youtube"};
+        for (String packageName : packages) {
+            try {
+                Intent appIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                appIntent.setPackage(packageName);
+                startActivity(appIntent);
+                return;
+            } catch (Exception ignored) {
+            }
+        }
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (Exception e) {
+            Toast.makeText(this, "YouTube açılamadı.", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -808,6 +891,7 @@ public class MainActivity extends Activity {
         keyInput.setText(prefs.apiKey());
         modelInput.setText(prefs.model());
         urlInput.setText(prefs.baseUrl());
+        youtubeApiKeyInput.setText(prefs.youtubeDataApiKey());
     }
 
     private void saveAi() {

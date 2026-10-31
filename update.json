@@ -1,8 +1,8 @@
 {
   "packageName": "com.ada.island",
-  "versionCode": 10,
-  "versionName": "1.9",
-  "apkUrl": "https://github.com/mm2vault/ada-dynamic-island/releases/download/v1.9/Ada-1.9.apk",
-  "sha256": "82a0a58dbd51c78627b6df3cb17e3ff91d7c984cdec10ceb3686b70ac313b4ad",
-  "notes": "Gemini answers now stream into Ada as generated; chat requests are no longer queued behind suggestion requests."
+  "versionCode": 11,
+  "versionName": "1.10",
+  "apkUrl": "https://github.com/mm2vault/ada-dynamic-island/releases/download/v1.10/Ada-1.10.apk",
+  "sha256": "cb0239654ed2ec7c8834de61235063b4b643c86b552068b8587508cb67a515e8",
+  "notes": "Official YouTube Data API v3 search results with handoff to the YouTube Music app; no direct stream extraction or in-app background playback."
 }
